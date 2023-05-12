@@ -4,13 +4,13 @@ package br.com.jadson.ciworkflowstrader;
 /**
  * This class contains example of YAML files contents
  */
-public class YamlExemplesTest {
+public class YamlFilesContents {
 
     /**
      * Example of file from project: /simplycode07/SKYZoom
      * https://raw.githubusercontent.com/simplycode07/SKYZoom/master/.github/workflows/python-app.yml
      */
-    public static final String ciWorkflowFile = "# This workflow will install Python dependencies, run tests and lint with a single version of Python\n" +
+    public static final String CI_WORKFLOW_FILE = "# This workflow will install Python dependencies, run tests and lint with a single version of Python\n" +
             "# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions\n" +
             "\n" +
             "name: Python application\n" +
@@ -44,7 +44,7 @@ public class YamlExemplesTest {
             "        python setup.py py2app -A";
 
 
-    public static final String ciWorkflowFile2 = """
+    public static final String CI_WORKFLOW_FILE_2 = """
             name: Build
                         
             on: [push, pull_request]
@@ -82,7 +82,7 @@ public class YamlExemplesTest {
             """;
 
 
-    public static final String nodeCIFile = """
+    public static final String NODE_CI_FILE = """
         name: Node.js CI
     
         on: [push, pull_request]
@@ -108,7 +108,7 @@ public class YamlExemplesTest {
     
         """;
 
-    public static final String javaMavenCiFile = """
+    public static final String JAVA_MAVEN_CI_FILE = """
             name: Java CI with Maven
                         
             on:
@@ -182,7 +182,7 @@ public class YamlExemplesTest {
      * Example of not CI workflow from project gradle/gradle
      * https://raw.githubusercontent.com/gradle/gradle/master/.github/workflows/auto-assign-pr-to-author.yml
      */
-    public static final String notCIWorkflowFile = "name: 'Auto Assign PR to Author'\n" +
+    public static final String NOT_CI_WORKFLOW_FILE = "name: 'Auto Assign PR to Author'\n" +
             "on:\n" +
             "  pull_request:\n" +
             "    types: [opened]\n" +
@@ -200,7 +200,7 @@ public class YamlExemplesTest {
             "      - uses: kentaro-m/auto-assign-action@v1.2.1";
 
 
-    public static final String newTestFile = """
+    public static final String NEW_TEST_FILE = """
                 name: Tests Browser Extension
                             
                 on: push
