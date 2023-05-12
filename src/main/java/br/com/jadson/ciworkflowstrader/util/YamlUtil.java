@@ -262,5 +262,17 @@ public class YamlUtil {
         return false;
     }
 
+    /**
+     * https://api.github.com/repos/AdAway/AdAway/actions/workflows?page=1&per_page=10
+     *   "name": "Android CI",
+     *   "path": ".github/workflows/android-ci.yml",
+     * @param fileName
+     * @return
+     */
+    public boolean hasCIInFileName(String fileName) {
+        return fileName.equalsIgnoreCase("ci.yml") || fileName.equalsIgnoreCase("ci.yaml")
+                || fileName.matches(".*" + "-ci.yml" + "$") || fileName.matches(".*" + "-ci.yaml" + "$") ;
+    }
+
 
 }
