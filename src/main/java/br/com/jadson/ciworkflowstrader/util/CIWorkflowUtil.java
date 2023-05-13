@@ -1,6 +1,7 @@
 package br.com.jadson.ciworkflowstrader.util;
 
-import br.com.jadson.ciworkflowstrader.model.WorkFlow;
+import br.com.jadson.ciworkflowstrader.model.GHAWord;
+import br.com.jadson.ciworkflowstrader.model.GHAWorkFlow;
 import br.com.jadson.snooper.githubactions.data.workflow.WorkflowInfo;
 import br.com.jadson.snooper.githubactions.operations.GHActionWorkflowsExecutor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +11,7 @@ import org.yaml.snakeyaml.Yaml;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.util.*;
+import java.util.stream.Stream;
 
 @Component
 public class CIWorkflowUtil {
@@ -39,12 +41,12 @@ public class CIWorkflowUtil {
      * @param githubProjectNames
      * @return
      */
-    public Map<String, Integer> processMostCommonWord(List<String> githubProjectNames, boolean onlyCIWorkFlows) {
+    public  List<GHAWord> processMostCommonWord(List<String> githubProjectNames, boolean onlyCIWorkFlows) {
 
         if(githubToken == null || githubToken.isEmpty())
             throw new IllegalArgumentException("Please, provide the github token");
 
-        Map<String, Integer> words = new HashMap<>();
+        Map<String, Integer> wordsMap = new HashMap<>();
 
         GHActionWorkflowsExecutor ghWorkflowExecutor = new GHActionWorkflowsExecutor(githubToken);
 
@@ -74,12 +76,12 @@ public class CIWorkflowUtil {
 
                     // sum the local words with global words
                     for (String localKey : localWords.keySet()){
-                        if (words.containsKey(localKey)) {
-                            int counter = words.get(localKey);
+                        if (wordsMap.containsKey(localKey)) {
+                            int counter = wordsMap.get(localKey);
                             counter = counter +  localWords.get(localKey);
-                            words.put(localKey, counter);
+                            wordsMap.put(localKey, counter);
                         } else {
-                            words.put(localKey, localWords.get(localKey));
+                            wordsMap.put(localKey, localWords.get(localKey));
                         }
                     }
 
@@ -97,6 +99,13 @@ public class CIWorkflowUtil {
 
         } // all projects
 
+        List<GHAWord> words = new ArrayList<>();
+
+        Stream<Map.Entry<String,Integer>> sorted = wordsMap.entrySet().stream().sorted(Collections.reverseOrder(Map.Entry.comparingByValue()));
+        sorted.forEach( (k) -> {
+            words.add(new GHAWord(k.getKey(), k.getValue()));
+        });
+
         return words;
     }
 
@@ -106,12 +115,12 @@ public class CIWorkflowUtil {
      * @param commonCIWords
      * @return
      */
-    public List<WorkFlow> checkCIWorkflows(List<String> githubProjectNames, List<String> commonCIWords) {
+    public List<GHAWorkFlow> checkCIWorkflows(List<String> githubProjectNames, List<String> commonCIWords) {
 
         if(githubToken == null || githubToken.isEmpty())
             throw new IllegalArgumentException("Please, provide the github token");
 
-        List<WorkFlow> workflows = new ArrayList<>();
+        List<GHAWorkFlow> workflows = new ArrayList<>();
 
         GHActionWorkflowsExecutor ghWorkflowExecutor = new GHActionWorkflowsExecutor(githubToken);
 
@@ -131,9 +140,9 @@ public class CIWorkflowUtil {
 
 
                 if(   isCIWorkflow(wfFileName, wfContent, commonCIWords)   ){
-                    workflows.add( new WorkFlow(projectName, wf, true));
+                    workflows.add( new GHAWorkFlow(projectName, wf, true));
                 }else{
-                    workflows.add( new WorkFlow(projectName, wf, false));
+                    workflows.add( new GHAWorkFlow(projectName, wf, false));
                 }
 
                 wfIndex++;

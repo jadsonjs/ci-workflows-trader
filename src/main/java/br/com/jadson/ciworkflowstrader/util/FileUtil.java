@@ -5,7 +5,6 @@ import org.springframework.stereotype.Component;
 import java.io.*;
 import java.net.URL;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Operation related with files

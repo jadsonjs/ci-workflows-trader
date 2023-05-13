@@ -6,7 +6,7 @@ import lombok.Data;
 
 @Data
 @AllArgsConstructor
-public class WorkFlow {
+public class GHAWorkFlow {
 
     String projectName;
 
