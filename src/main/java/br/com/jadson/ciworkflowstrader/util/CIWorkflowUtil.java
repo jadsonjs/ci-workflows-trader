@@ -1,17 +1,26 @@
 package br.com.jadson.ciworkflowstrader.util;
 
+import br.com.jadson.ciworkflowstrader.model.WorkFlow;
+import br.com.jadson.snooper.githubactions.data.workflow.WorkflowInfo;
+import br.com.jadson.snooper.githubactions.operations.GHActionWorkflowsExecutor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.util.*;
 
 @Component
 public class CIWorkflowUtil {
 
+    String githubToken = "";
+
     @Autowired
     YamlUtil yamlUtil;
+
+    @Autowired
+    FileUtil fileUtil;
 
     public CIWorkflowUtil(){}
 
@@ -19,23 +28,129 @@ public class CIWorkflowUtil {
         this.yamlUtil = yamlUtil;
     }
 
+    public CIWorkflowUtil(YamlUtil yamlUtil, FileUtil fileUtil){
+        this.yamlUtil = yamlUtil;
+        this.fileUtil = fileUtil;
+    }
+
+
     /**
      * Proccess all workflow file content of the projects and return a list of most common words
      * @param githubProjectNames
      * @return
      */
-    public Map<String, Integer> processMostCommonWord(List<String> githubProjectNames, boolean onlyCI) {
+    public Map<String, Integer> processMostCommonWord(List<String> githubProjectNames, boolean onlyCIWorkFlows) {
 
-        // TODO
+        if(githubToken == null || githubToken.isEmpty())
+            throw new IllegalArgumentException("Please, provide the github token");
+
         Map<String, Integer> words = new HashMap<>();
-        words.put("install", 10);
-        words.put("build", 40);
-        words.put("test", 5);
-        words.put("run", 15);
-        words.put("sudo", 20);
+
+        GHActionWorkflowsExecutor ghWorkflowExecutor = new GHActionWorkflowsExecutor(githubToken);
+
+        int index = 1;
+
+        forProjects:
+        for (String projectName : githubProjectNames) {
+
+            List<WorkflowInfo> workflows = ghWorkflowExecutor.getWorkflows(projectName);
+
+            int wfIndex = 1;
+            for (WorkflowInfo wf : workflows) {
+
+                String wfFileName = extractWorkflowFileName(wf);
+
+                String wfContent = extractWorkflowContent(projectName, wfFileName);
+
+                if( ! onlyCIWorkFlows || ( onlyCIWorkFlows  && isCIBYDirectIdentification(wfFileName, wfContent ) ) ) {
+                    String wfFileFullPath = saveWorkflowContent(projectName, wfFileName, wfContent);
+
+
+                    File workflowFile = new File(wfFileFullPath);
+
+                    System.out.println("Counting words of "+wfFileName);
+
+                    Map<String, Integer> localWords = yamlUtil.countMostCommonsWordsInYaml(workflowFile);
+
+                    // sum the local words with global words
+                    for (String localKey : localWords.keySet()){
+                        if (words.containsKey(localKey)) {
+                            int counter = words.get(localKey);
+                            counter = counter +  localWords.get(localKey);
+                            words.put(localKey, counter);
+                        } else {
+                            words.put(localKey, localWords.get(localKey));
+                        }
+                    }
+
+                }
+
+                wfIndex++;
+
+                if (wfIndex > 0 && wfIndex % 100 == 0)  sleep(1);
+
+            } // all workflow of a project
+
+            index++;
+
+            if (index > 0 && index % 100 == 0) sleep(1);
+
+        } // all projects
 
         return words;
     }
+
+    /**
+     * This method check for each project witch workflows of this project are a CI-related workflow.
+     * @param githubProjectNames
+     * @param commonCIWords
+     * @return
+     */
+    public List<WorkFlow> checkCIWorkflows(List<String> githubProjectNames, List<String> commonCIWords) {
+
+        if(githubToken == null || githubToken.isEmpty())
+            throw new IllegalArgumentException("Please, provide the github token");
+
+        List<WorkFlow> workflows = new ArrayList<>();
+
+        GHActionWorkflowsExecutor ghWorkflowExecutor = new GHActionWorkflowsExecutor(githubToken);
+
+        int index = 1;
+
+        forProjects:
+        for (String projectName : githubProjectNames) {
+
+            List<WorkflowInfo> workflowsInfo = ghWorkflowExecutor.getWorkflows(projectName);
+
+            int wfIndex = 1;
+            for (WorkflowInfo wf : workflowsInfo) {
+
+                String wfFileName = extractWorkflowFileName(wf);
+
+                String wfContent = extractWorkflowContent(projectName, wfFileName);
+
+
+                if(   isCIWorkflow(wfFileName, wfContent, commonCIWords)   ){
+                    workflows.add( new WorkFlow(projectName, wf, true));
+                }else{
+                    workflows.add( new WorkFlow(projectName, wf, false));
+                }
+
+                wfIndex++;
+
+                if (wfIndex > 0 && wfIndex % 100 == 0)  sleep(1);
+
+            } // all workflow of a project
+
+            index++;
+
+            if (index > 0 && index % 100 == 0) sleep(1);
+
+        } // all projects
+
+        return workflows;
+    }
+
 
     /**
      * This method check if a GHActions workflow is a CI-related workflow.
@@ -48,11 +163,8 @@ public class CIWorkflowUtil {
      * @return
      */
     public boolean isCIWorkflow(String workflowFileName, String content, final List<String> commonCIWordsList) {
-        
-        Yaml yaml = new Yaml();
-        Map<String, Object> data = yaml.load( new ByteArrayInputStream(content.getBytes()));
 
-        if (isCIBYDirectIdentification(data, workflowFileName) || isCIBYIndirectIdentification(data, commonCIWordsList))
+        if (isCIBYDirectIdentification(workflowFileName, content) || isCIBYIndirectIdentification(content, commonCIWordsList))
             return true;
 
         return false;
@@ -60,6 +172,10 @@ public class CIWorkflowUtil {
 
 
 
+    public CIWorkflowUtil setGithubToken(String githubToken) {
+        this.githubToken = githubToken;
+        return this;
+    }
 
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -69,15 +185,26 @@ public class CIWorkflowUtil {
      * The workflow file contains “CI” in the name of the YAML file, example: “ci.yml” or “*-ci.yml”, or contains “CI”
      * in the workflow name, for example: “name: Node.js CI”
      * @param workflowFileName
-     * @param data
+     * @param wfContent
      * @return
      */
-    private boolean isCIBYDirectIdentification(Map<String, Object> data, String workflowFileName) {
-        if(yamlUtil.hasCIInFileName(workflowFileName))
-            return true;
+    private boolean isCIBYDirectIdentification(String workflowFileName, String wfContent) {
 
-        if( yamlUtil.containsInWorkflowName(data, "ci") )
-            return true;
+        try {
+            if (yamlUtil.hasCIInFileName(workflowFileName))
+                return true;
+
+            Yaml yaml = new Yaml();
+            Map<String, Object> data = yaml.load(new ByteArrayInputStream(wfContent.getBytes()));
+
+            if (yamlUtil.containsInWorkflowName(data, "ci"))
+                return true;
+
+        }catch (Exception ex){
+            ex.printStackTrace();
+            return false;
+        }
+
         return false;
     }
 
@@ -94,14 +221,85 @@ public class CIWorkflowUtil {
      *     and manually identified the 30 most common tokens related to CI.
      *
      * @param commonCIWordsList
-     * @param data
+     * @param wfContent
      * @return
      */
-    private boolean isCIBYIndirectIdentification(Map<String, Object> data, List<String> commonCIWordsList) {
-        if(data != null && yamlUtil.containsCheckoutAction(data) && yamlUtil.containsCIEvents(data) && yamlUtil.containsWord(data, commonCIWordsList)){ // or these conditions
-            return true;
+    private boolean isCIBYIndirectIdentification(String wfContent, List<String> commonCIWordsList) {
+
+        try {
+            Yaml yaml = new Yaml();
+            Map<String, Object> data = yaml.load(new ByteArrayInputStream(wfContent.getBytes()));
+
+            if (data != null && yamlUtil.containsCheckoutAction(data) && yamlUtil.containsCIEvents(data) && yamlUtil.containsWord(data, commonCIWordsList)) { // or these conditions
+                return true;
+            }
+        }catch (Exception ex){
+            ex.printStackTrace();
+            return false;
         }
         return false;
+    }
+
+
+    /**
+     * Download the workflow file to local machine in a tmp Dir
+     * @param projectName
+     * @param workflowFileName
+     * @return
+     */
+//    public String downloadWorkflowContent(String projectName, String workflowFileName){
+//
+//        String tmpDirLocation = System.getProperty("java.io.tmpdir");
+//
+//        String projectTmpDir = tmpDirLocation +"/"+ projectName;
+//        String worflowFileFullPath = projectTmpDir +"/"+ workflowFileName;
+//
+//        fileUtil.createLocalDirectory(projectTmpDir);
+//
+//        String githubRawURL = "https://raw.githubusercontent.com/" + projectName + "/master/.github/workflows/" + workflowFileName;
+//        fileUtil.downloadContent(githubRawURL, worflowFileFullPath);
+//        return worflowFileFullPath;
+//
+//    }
+
+    /**
+     * Save the context of workflow to a file
+     * @param projectName
+     * @param workflowFileName
+     * @param wfContent
+     * @return
+     */
+    private String saveWorkflowContent(String projectName, String workflowFileName, String wfContent){
+
+        String tmpDirLocation = System.getProperty("java.io.tmpdir");
+
+        String projectTmpDir = tmpDirLocation +"/"+ projectName;
+        String worflowFileFullPath = projectTmpDir +"/"+ workflowFileName;
+
+        fileUtil.createLocalDirectory(projectTmpDir);
+
+        fileUtil.createLocalFile(worflowFileFullPath, wfContent);
+
+        return worflowFileFullPath;
+
+    }
+
+
+
+
+    private String extractWorkflowFileName(WorkflowInfo wf) {
+        return wf.path.substring(wf.path.lastIndexOf("/")+1);
+    }
+
+    public String extractWorkflowContent(String nameWithOwner, String workflowFileName){
+        String githubRawURL = "https://raw.githubusercontent.com/" + nameWithOwner + "/master/.github/workflows/" + workflowFileName;
+        return fileUtil.getUrlContents(githubRawURL);
+    }
+
+
+    private static void sleep(int minutes) {
+        System.out.println(">>>> Sleeping 1 min zzZ ...");
+        try { Thread.sleep(minutes * 60 * 1000); } catch (InterruptedException e) {e.printStackTrace();}
     }
 
 

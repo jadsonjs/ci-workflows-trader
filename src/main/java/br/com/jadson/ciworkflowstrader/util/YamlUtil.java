@@ -22,33 +22,38 @@ public class YamlUtil {
      * This method count the most common words in Yaml file. Not considering the keys
      * @return
      */
-    public Map<String, Integer> countMostCommonsWordsInYaml(File yamlFile) throws IOException {
+    public Map<String, Integer> countMostCommonsWordsInYaml(File yamlFile) {
 
         Map<String, Integer> words = new HashMap<>();
 
-        Yaml yaml = new Yaml();
-        Map<String, Object> data = yaml.load(new FileInputStream(yamlFile));
-        List<Object> values = new ArrayList<>();
-        extractedValues(data, values);
+        try {
 
-        for (Object yamlField : values){
-            if(yamlField != null) {
-                String[] tokens = yamlField.toString().replaceAll("\n", " ").split(" ");
+            Yaml yaml = new Yaml();
+            Map<String, Object> data = yaml.load(new FileInputStream(yamlFile));
+            List<Object> values = new ArrayList<>();
+            extractedValues(data, values);
 
-                for (String token : tokens) {
-                    token = token.toLowerCase();
-                    if (token.length() > 2 && token.matches("[a-zA-Z]+")) { // remove keywords and symbols
-                        if (words.containsKey(token)) {
-                            int counter = words.get(token);
-                            counter++;
-                            words.put(token, counter);
-                        } else {
-                            words.put(token, 1);
+            for (Object yamlField : values) {
+                if (yamlField != null) {
+                    String[] tokens = yamlField.toString().replaceAll("\n", " ").split(" ");
+
+                    for (String token : tokens) {
+                        token = token.toLowerCase();
+                        if (token.length() > 2 && token.matches("[a-zA-Z]+")) { // remove keywords and symbols
+                            if (words.containsKey(token)) {
+                                int counter = words.get(token);
+                                counter++;
+                                words.put(token, counter);
+                            } else {
+                                words.put(token, 1);
+                            }
                         }
                     }
                 }
-            }
 
+            }
+        }catch (IOException e){
+            System.err.println("YamlUtil: "+e.getMessage()+" cause -> "+e.getCause());
         }
 
         return words;

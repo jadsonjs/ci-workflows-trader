@@ -69,6 +69,14 @@ public class FileUtil {
         if (!dir.exists()) dir.mkdirs();
     }
 
+    public void createLocalFile(String fileFullPath, String fileContent) {
+        try(BufferedWriter writer = new BufferedWriter(new FileWriter(fileFullPath))) {
+            writer.write(fileContent);
+        }catch (IOException e){
+            System.err.println("FileUtil: "+e.getMessage()+" cause -> "+e.getCause());
+        }
+    }
+
 
     public List<File> getAllFilesForFolder(final File folder, List<File> files) {
         for (final File fileEntry : folder.listFiles()) {
@@ -80,4 +88,6 @@ public class FileUtil {
         }
         return files;
     }
+
+
 }
