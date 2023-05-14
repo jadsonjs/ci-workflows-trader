@@ -16,7 +16,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Enumeration;
 import java.util.List;
+import java.util.Properties;
 
 @RestController
 @RequestMapping(path = "/ci-workflow")
@@ -48,14 +50,15 @@ public class CIWorkflowController {
     @GetMapping(path = "most-common-words" , produces = MediaType.APPLICATION_JSON_VALUE )
     public @ResponseBody List<GHAWord> mostCommonWords(@RequestParam(name = "projects") List<String> githubProjectNames) {
 
-        if(System.getenv("github.token") == null)
+        String githubToken = getGitHubToken();
+
+        if(githubToken == null)
             throw new IllegalArgumentException("Set the github.token as a env variable.");
 
-        List<GHAWord> words = ciWorkflowUtil.setGithubToken(System.getenv("github.token")).processMostCommonWord(githubProjectNames, true);
+        List<GHAWord> words = ciWorkflowUtil.setGithubToken(githubToken).processMostCommonWord(githubProjectNames, true);
 
         return words;
     }
-
 
 
     /**
@@ -76,12 +79,20 @@ public class CIWorkflowController {
     @GetMapping(path = "/check-ci-workflows", produces = MediaType.APPLICATION_JSON_VALUE )
     public  @ResponseBody List<GHAWorkFlow> checkUseOfCiServer(@RequestParam(name = "projects") List<String> githubProjectNames, @RequestParam(name = "words") List<String> commonCIWords) {
 
-        if(System.getenv("github.token") == null)
+        String githubToken = getGitHubToken();
+
+        if(githubToken == null)
             throw new IllegalArgumentException("Set the github.token as a env variable.");
 
-        List<GHAWorkFlow> resultList = ciWorkflowUtil.setGithubToken(System.getenv("github.token")).checkCIWorkflows(githubProjectNames, commonCIWords);
+        List<GHAWorkFlow> resultList = ciWorkflowUtil.setGithubToken(githubToken).checkCIWorkflows(githubProjectNames, commonCIWords);
 
         return resultList;
+    }
+
+    private String getGitHubToken() {
+        String token = System.getenv("github.token") != null ? System.getenv("github.token") : System.getProperty("github.token");
+        System.out.println("\n\n>>>>>>>>>>>>>>>>>> GitHub Token: "+token+" \n\n");
+        return token;
     }
 
 }

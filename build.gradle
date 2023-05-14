@@ -38,3 +38,21 @@ dependencies {
 tasks.named('test') {
 	useJUnitPlatform()
 }
+
+/**
+ *
+ * The -P flag is for gradle properties, and the -D flag is for JVM properties.
+ * Because the test may be forked in a new JVM, the -D argument passed to gradle
+ * will not be propagated to the test
+ *
+ * You can use the systemProperty in your test block as you have done but base it
+ * on the incoming gradle property by passing it with it -P
+ *
+ * https://stackoverflow.com/questions/21406265/how-to-give-system-property-to-my-test-via-gradle-and-d
+ *
+ * gradle -Pgithub.token=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx build
+ *
+ */
+test {
+	systemProperty "github.token", project.getProperty("github.token")
+}
