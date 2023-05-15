@@ -4,7 +4,6 @@ package br.com.jadson.ciworkflowstrader.controllers;
 import br.com.jadson.ciworkflowstrader.model.GHAWord;
 import br.com.jadson.ciworkflowstrader.model.GHAWorkFlow;
 import br.com.jadson.ciworkflowstrader.util.CIWorkflowUtil;
-import br.com.jadson.ciworkflowstrader.util.FileUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -16,9 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Enumeration;
 import java.util.List;
-import java.util.Properties;
 
 @RestController
 @RequestMapping(path = "/ci-workflow")
@@ -27,15 +24,13 @@ public class CIWorkflowController {
     @Autowired
     CIWorkflowUtil ciWorkflowUtil;
 
-    @Autowired
-    FileUtil fileUtil;
 
 
     /**
      * To find the most common CI-related keywords, we downloaded the content of all workflows files directly identified as CI workflow, tokenized it,
      * and manually identified the 30 most common tokens related to CI.
      *
-     * http://localhost:8080/ci-workflow/most-common-words?projects=gradle/gradle,/simplycode07/SKYZoom,/onflow/flow-go
+     * http://localhost:8080/ci-workflow/most-common-words?projects=gradle/gradle,simplycode07/SKYZoom,onflow/flow-go
      *
      * @param githubProjectNames
      * @return
@@ -53,9 +48,9 @@ public class CIWorkflowController {
         String githubToken = getGitHubToken();
 
         if(githubToken == null)
-            throw new IllegalArgumentException("Set the github.token as a env variable.");
+            throw new IllegalArgumentException("Set the github.token as a env variable");
 
-        List<GHAWord> words = ciWorkflowUtil.setGithubToken(githubToken).processMostCommonWord(githubProjectNames, true);
+        List<GHAWord> words = ciWorkflowUtil.setGithubToken(githubToken).generateCICommonWords(githubProjectNames);
 
         return words;
     }
@@ -82,13 +77,17 @@ public class CIWorkflowController {
         String githubToken = getGitHubToken();
 
         if(githubToken == null)
-            throw new IllegalArgumentException("Set the github.token as a env variable.");
+            throw new IllegalArgumentException("Set the github.token as a env variable");
 
         List<GHAWorkFlow> resultList = ciWorkflowUtil.setGithubToken(githubToken).checkCIWorkflows(githubProjectNames, commonCIWords);
 
         return resultList;
     }
 
+    /**
+     * Pass the token as Environment Variable: github.token=xxxxxxxxxxxxxxxxxxxxxxxxxxxxx in spring boot execution
+     * @return
+     */
     private String getGitHubToken() {
         String token = System.getenv("github.token") != null ? System.getenv("github.token") : System.getProperty("github.token");
         System.out.println("\n\n>>>>>>>>>>>>>>>>>> GitHub Token: "+token+" \n\n");

@@ -8,8 +8,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.yaml.snakeyaml.Yaml;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
-import java.io.File;
+import java.io.InputStreamReader;
+import java.net.URL;
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -21,18 +24,11 @@ public class CIWorkflowUtil {
     @Autowired
     YamlUtil yamlUtil;
 
-    @Autowired
-    FileUtil fileUtil;
-
     public CIWorkflowUtil(){}
+
 
     public CIWorkflowUtil(YamlUtil yamlUtil){
         this.yamlUtil = yamlUtil;
-    }
-
-    public CIWorkflowUtil(YamlUtil yamlUtil, FileUtil fileUtil){
-        this.yamlUtil = yamlUtil;
-        this.fileUtil = fileUtil;
     }
 
 
@@ -41,7 +37,7 @@ public class CIWorkflowUtil {
      * @param githubProjectNames
      * @return
      */
-    public  List<GHAWord> processMostCommonWord(List<String> githubProjectNames, boolean onlyCIWorkFlows) {
+    public  List<GHAWord> generateCICommonWords(List<String> githubProjectNames) {
 
         if(githubToken == null || githubToken.isEmpty())
             throw new IllegalArgumentException("Please, provide the github token");
@@ -64,15 +60,10 @@ public class CIWorkflowUtil {
 
                 String wfContent = extractWorkflowContent(projectName, wfFileName);
 
-                if( ! onlyCIWorkFlows || ( onlyCIWorkFlows  && isCIBYDirectIdentification(wfFileName, wfContent ) ) ) {
-                    String wfFileFullPath = saveWorkflowContent(projectName, wfFileName, wfContent);
+                if( isCIBYDirectIdentification(wfFileName, wfContent ) ) {
 
 
-                    File workflowFile = new File(wfFileFullPath);
-
-                    System.out.println("Counting words of "+wfFileName);
-
-                    Map<String, Integer> localWords = yamlUtil.countMostCommonsWordsInYaml(workflowFile);
+                    Map<String, Integer> localWords = yamlUtil.countMostCommonsWordsInYaml(wfContent);
 
                     // sum the local words with global words
                     for (String localKey : localWords.keySet()){
@@ -179,6 +170,24 @@ public class CIWorkflowUtil {
         return false;
     }
 
+    /**
+     * This method check if a GHActions workflow is a CI-related workflow passing the the URL to the workflow file.
+     * @param url
+     * @param ciMostCommonWords
+     * @return
+     */
+    public boolean isCIWorkflow(String url, List<String> ciMostCommonWords) {
+
+        String projectName = extractProjectName(url);
+        String wfYamlFileName = extractWorkflowFileName(url);
+        String content = extractWorkflowContent(projectName, wfYamlFileName);
+
+        if (isCIBYDirectIdentification(wfYamlFileName, content) || isCIBYIndirectIdentification(content, ciMostCommonWords))
+            return true;
+
+        return false;
+    }
+
 
 
     public CIWorkflowUtil setGithubToken(String githubToken) {
@@ -250,59 +259,55 @@ public class CIWorkflowUtil {
     }
 
 
-    /**
-     * Download the workflow file to local machine in a tmp Dir
-     * @param projectName
-     * @param workflowFileName
-     * @return
-     */
-//    public String downloadWorkflowContent(String projectName, String workflowFileName){
-//
-//        String tmpDirLocation = System.getProperty("java.io.tmpdir");
-//
-//        String projectTmpDir = tmpDirLocation +"/"+ projectName;
-//        String worflowFileFullPath = projectTmpDir +"/"+ workflowFileName;
-//
-//        fileUtil.createLocalDirectory(projectTmpDir);
-//
-//        String githubRawURL = "https://raw.githubusercontent.com/" + projectName + "/master/.github/workflows/" + workflowFileName;
-//        fileUtil.downloadContent(githubRawURL, worflowFileFullPath);
-//        return worflowFileFullPath;
-//
-//    }
-
-    /**
-     * Save the context of workflow to a file
-     * @param projectName
-     * @param workflowFileName
-     * @param wfContent
-     * @return
-     */
-    private String saveWorkflowContent(String projectName, String workflowFileName, String wfContent){
-
-        String tmpDirLocation = System.getProperty("java.io.tmpdir");
-
-        String projectTmpDir = tmpDirLocation +"/"+ projectName;
-        String worflowFileFullPath = projectTmpDir +"/"+ workflowFileName;
-
-        fileUtil.createLocalDirectory(projectTmpDir);
-
-        fileUtil.createLocalFile(worflowFileFullPath, wfContent);
-
-        return worflowFileFullPath;
-
-    }
-
-
-
 
     private String extractWorkflowFileName(WorkflowInfo wf) {
         return wf.path.substring(wf.path.lastIndexOf("/")+1);
     }
 
+    private String extractWorkflowFileName(String url) {
+        return url.substring(url.lastIndexOf("/")+1);
+    }
+
+    /**
+     * Extract project name from WorkFlow URL
+     *
+     * @param url https://github.com/simplycode07/SKYZoom/blob/master/.github/workflows/python-app.yml
+     * @return simplycode07/SKYZoom
+     */
+    public String extractProjectName(String url) {
+        if(url == null || url.isEmpty())
+            return "";
+        if(!url.startsWith("https://github.com"))
+            throw new IllegalArgumentException("not a valid github url: "+url);
+
+        String s = (url.substring(19));                                    // remove https://github.com/
+        return s.substring(0, s.indexOf("/", s.indexOf("/") + 1));      // get until the second "/"
+    }
+
+
     public String extractWorkflowContent(String nameWithOwner, String workflowFileName){
         String githubRawURL = "https://raw.githubusercontent.com/" + nameWithOwner + "/master/.github/workflows/" + workflowFileName;
-        return fileUtil.getUrlContents(githubRawURL);
+        return getUrlContents(githubRawURL);
+    }
+
+    /**
+     * Get a content of a url to a String
+     * @param theUrl
+     * @return
+     */
+    public String getUrlContents(String theUrl) {
+        StringBuilder content = new StringBuilder();
+
+        try (BufferedInputStream in = new BufferedInputStream(new URL(theUrl).openStream());
+             BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(in)) ) {
+            String line;
+            while ((line = bufferedReader.readLine()) != null) {
+                content.append(line + "\n");
+            }
+        }catch(Exception e) {
+            System.err.println("FileUtil: "+e.getMessage()+" cause -> "+e.getCause());
+        }
+        return content.toString();
     }
 
 
@@ -310,6 +315,7 @@ public class CIWorkflowUtil {
         System.out.println(">>>> Sleeping 1 min zzZ ...");
         try { Thread.sleep(minutes * 60 * 1000); } catch (InterruptedException e) {e.printStackTrace();}
     }
+
 
 
 }

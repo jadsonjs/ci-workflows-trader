@@ -4,9 +4,7 @@ package br.com.jadson.ciworkflowstrader.util;
 import org.springframework.stereotype.Component;
 import org.yaml.snakeyaml.Yaml;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -22,38 +20,33 @@ public class YamlUtil {
      * This method count the most common words in Yaml file. Not considering the keys
      * @return
      */
-    public Map<String, Integer> countMostCommonsWordsInYaml(File yamlFile) {
+    public Map<String, Integer> countMostCommonsWordsInYaml(String wfContent) {
 
         Map<String, Integer> words = new HashMap<>();
 
-        try {
+        Yaml yaml = new Yaml();
+        Map<String, Object> data = yaml.load(new ByteArrayInputStream(wfContent.getBytes()));
+        List<Object> values = new ArrayList<>();
+        extractedValues(data, values);
 
-            Yaml yaml = new Yaml();
-            Map<String, Object> data = yaml.load(new FileInputStream(yamlFile));
-            List<Object> values = new ArrayList<>();
-            extractedValues(data, values);
+        for (Object yamlField : values) {
+            if (yamlField != null) {
+                String[] tokens = yamlField.toString().replaceAll("\n", " ").split(" ");
 
-            for (Object yamlField : values) {
-                if (yamlField != null) {
-                    String[] tokens = yamlField.toString().replaceAll("\n", " ").split(" ");
-
-                    for (String token : tokens) {
-                        token = token.toLowerCase();
-                        if (token.length() > 2 && token.matches("[a-zA-Z]+")) { // remove keywords and symbols
-                            if (words.containsKey(token)) {
-                                int counter = words.get(token);
-                                counter++;
-                                words.put(token, counter);
-                            } else {
-                                words.put(token, 1);
-                            }
+                for (String token : tokens) {
+                    token = token.toLowerCase();
+                    if (token.length() > 2 && token.matches("[a-zA-Z]+")) { // remove keywords and symbols
+                        if (words.containsKey(token)) {
+                            int counter = words.get(token);
+                            counter++;
+                            words.put(token, counter);
+                        } else {
+                            words.put(token, 1);
                         }
                     }
                 }
-
             }
-        }catch (IOException e){
-            System.err.println("YamlUtil: "+e.getMessage()+" cause -> "+e.getCause());
+
         }
 
         return words;

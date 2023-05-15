@@ -44,18 +44,18 @@ Clone the project -> Import it as a gradle project on your IDE.
 
 #### From the binary:
 
-ci-workflows-trader has a binary distribution on **libs/ci-workflows-trader-X.Y.Z-plain.jar** directory.
+ci-workflows-trader has a binary distribution on **dist/ci-workflows-trader-X.Y.Z-plain.jar** directory.
 
 Include it on the classpath of your project.
 
 
 #### Run the application as a service:
 
-Download the binary distribution on **libs/ci-workflows-trader-X.Y.Z.jar** directory.
+Download the binary distribution on **dist/ci-workflows-trader-X.Y.Z.jar** directory.
 
 Run the command:
 
-    java -jar -Dserver.port=808X ci-workflows-trader.jar
+    java -jar -Dserver.port=808X -Dgithub.token=xxxx ci-workflows-trader-X.Y.Z..jar
 
 
 #### Run the application at Docker:
@@ -63,7 +63,7 @@ Run the command:
 ci-workflows-trader is being published in Docker Hub, if you want to execute without need to install
 the JavaVM in your machine, you can just run the follow docker command:
 
-    docker container run -d -p 808X:8080 jadsonjs/ci-workflows-trader:vX.Y.Z
+    docker container run -d -p 8080:8080 -e github.token=xxxx --name ci-workflows-trader jadsonjs/ci-workflows-trader:vX.Y.Z
 
 
 #### REST api documentation:
@@ -72,3 +72,54 @@ Execute the application and access the follow address, which will be shown to yo
 
 
     http://localhost:808X/swagger-ui/index.html
+
+
+### How to use
+
+Examples of how to use:
+
+```
+
+List<String> projects = List.of("gradle/gradle", "onflow/flow-go");
+
+
+
+CIWorkflowUtil workflowUtil = new CIWorkflowUtil(new YamlUtil()).setGithubToken("token");
+
+workflowUtil.generateCICommonWords(projects);
+
+
+
+//////////////////////////////////
+
+
+CIWorkflowUtil workflowUtil = new CIWorkflowUtil(new YamlUtil()).setGithubToken("token");
+
+List<GHAWorkFlow> resultList = workflowUtil.checkCIWorkflows(projects, commonCIWords);
+
+
+
+//////////////////////////////////
+
+
+
+CIWorkflowUtil workflowUtil = new CIWorkflowUtil(new YamlUtil()).setGithubToken("token");
+
+workflowUtil.isCIWorkflow("https://github.com/simplycode07/SKYZoom/blob/master/.github/workflows/python-app.yml", CI_MOST_COMMON_WORDS);
+
+
+
+//////////////////////////////////
+
+
+
+CIWorkflowUtil workflowUtil = new CIWorkflowUtil(new YamlUtil()).setGithubToken("token");
+
+workflowUtil.isCIWorkflow("java-app.yml", yamlFile, CI_MOST_COMMON_WORDS)
+
+
+
+
+
+```
+

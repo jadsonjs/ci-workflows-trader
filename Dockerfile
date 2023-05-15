@@ -6,7 +6,7 @@ FROM gradle:8.1.1-jdk17 as builder
 ARG GITHUB_TOKEN
 WORKDIR /app
 COPY . .
-RUN ./gradlew -Pgithub.token=$GITHUB_TOKEN clean build
+RUN ./gradlew -Dgithub.token=$GITHUB_TOKEN clean build
 
 # docker container run -d -p 8080:8080 -e github.token=xxxx --name ci-workflows-trader jadsonjs/ci-workflows-trader:v1.0.0
 

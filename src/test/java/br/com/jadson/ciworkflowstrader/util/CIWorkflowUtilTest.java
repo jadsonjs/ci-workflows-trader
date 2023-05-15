@@ -56,5 +56,14 @@ class CIWorkflowUtilTest {
     }
 
 
+    @Test
+    void isCIWorkflowUsingFileURL() {
+        Assertions.assertTrue( new CIWorkflowUtil(new YamlUtil()).isCIWorkflow("https://github.com/gradle/gradle/blob/master/.github/workflows/codeql-analysis.yml", CI_WORDS) );
+    }
+
+    @Test
+    void isCIWorkflowUsingFileUR2L() {
+        Assertions.assertTrue( new CIWorkflowUtil(new YamlUtil()).isCIWorkflow("https://github.com/simplycode07/SKYZoom/blob/master/.github/workflows/python-app.yml", CI_WORDS) );
+    }
 
 }

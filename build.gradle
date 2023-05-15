@@ -50,9 +50,9 @@ tasks.named('test') {
  *
  * https://stackoverflow.com/questions/21406265/how-to-give-system-property-to-my-test-via-gradle-and-d
  *
- * gradle -Pgithub.token=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx build
+ * gradle -Dgithub.token=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx build
  *
  */
 test {
-	systemProperty "github.token", project.getProperty("github.token")
+	systemProperty "github.token", System.getProperty("github.token")
 }

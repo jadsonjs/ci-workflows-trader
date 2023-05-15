@@ -8,7 +8,6 @@ import org.yaml.snakeyaml.Yaml;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
@@ -28,14 +27,7 @@ class YamlUtilTest {
     @Test
     void countMostCommonsWordsInYaml() throws IOException  {
 
-        // Create a temporary file.
-        // This is guaranteed to be deleted after the test finishes.
-        final Path tempFile = Files.createFile(tempDir.resolve("temp.yaml"));
-
-        // Write yaml content to it.
-        Files.writeString(tempFile, YamlFilesContents.CI_WORKFLOW_FILE);
-
-        Map<String, Integer> map = new YamlUtil().countMostCommonsWordsInYaml(tempFile.toFile());
+        Map<String, Integer> map = new YamlUtil().countMostCommonsWordsInYaml(YamlFilesContents.CI_WORKFLOW_FILE);
 
         for (String key : map.keySet()){
             System.out.println(key+ "->"+ map.get(key));
